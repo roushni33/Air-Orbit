@@ -230,7 +230,7 @@ export default function SearchPage() {
               <div className="sm:pl-12 border-t sm:border-t-0 border-aa-mist pt-8 sm:pt-0">
                 <div className="font-body text-[11px] font-medium tracking-[0.32em] uppercase text-aa-slate mb-3">Avg. trip rating</div>
                 <div className="font-display text-[40px] sm:text-[48px] tracking-tight text-aa-horizon leading-none mb-2">
-                  <CountUp to={4.8} from={0} duration={2} delay={0.7} /><span className="text-[24px] sm:text-[28px] ml-1">â˜…</span>
+                  <CountUp to={4.8} from={0} duration={2} delay={0.7} /><span className="text-[24px] sm:text-[28px] ml-1">★</span>
                 </div>
                 <p className="font-body text-[13px] text-aa-slate m-0">Rated by verified passengers</p>
               </div>
