@@ -5,7 +5,7 @@ Air Orbit is primarily an advanced airline booking system built as a full-stack 
 The repo includes an API gateway, flights service, booking service, notifications service, database/cache/queue infrastructure, and the Air Orbit frontend demo.
 ## Architecture
 
-<img width="1536" height="1024" alt="design_diagram_orbit" src="https://github.com/user-attachments/assets/143767fe-bb07-4563-925c-4362e8a84c7a" />
+<img width="1536" height="1024" alt="design_diagram_orbit" src="https://github.com/user-attachments/assets/6d01cfa6-c14d-460c-a059-ddaff6957bac" />
 
 ## Run Locally
 
