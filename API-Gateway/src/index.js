@@ -5,6 +5,8 @@ const apiRoutes = require('./routes');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // ALLOWED_ORIGIN: set to your Vercel URL in production (e.g. https://air-orbit.vercel.app)
 // Falls back to * so local dev and testing work without configuration.
 app.use(cors({
