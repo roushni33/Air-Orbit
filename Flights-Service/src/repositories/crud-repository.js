@@ -1,11 +1,11 @@
-const { Logger } = require('../config');
+const { StatusCodes } = require('http-status-codes');
 const AppError = require('../utils/errors/app-error');
-const {StatusCodes} = require('http-status-codes');
-
+const db = require('../db');
+const { eq } = require('drizzle-orm');
 
 class CrudRepository {
-    constructor(model){
-        this.model = model;
+    constructor(table) {
+        this.table = table;
     }
 
     /**
@@ -14,8 +14,8 @@ class CrudRepository {
      * @param {Object} data - Column values for the new record.
      * @returns {Promise<Model>} The newly created Sequelize model instance.
      */
-    async create(data){
-        const response = await this.model.create(data);
+    async create(data, tx = db) {
+        const [response] = await tx.insert(this.table).values(data).returning();
         return response;
     }
 
@@ -26,16 +26,12 @@ class CrudRepository {
      * @param {number} data - Primary key (id) of the record to delete.
      * @returns {Promise<number>} Number of rows deleted (1 on success).
      */
-    async destroy(data){
-        const response = await this.model.destroy({
-            where:{
-                id: data
-            }
-        });
-        if(!response){
-            throw new AppError('Not able to find the resource',StatusCodes.NOT_FOUND);
+    async destroy(id, tx = db) {
+        const response = await tx.delete(this.table).where(eq(this.table.id, id)).returning();
+        if (response.length === 0) {
+            throw new AppError('Not able to find the resource', StatusCodes.NOT_FOUND);
         }
-        return response;
+        return response.length;
     }
 
     /**
@@ -45,12 +41,12 @@ class CrudRepository {
      * @param {number} data - Primary key (id) of the record to fetch.
      * @returns {Promise<Model>} The found Sequelize model instance.
      */
-    async get(data){
-        const response = await this.model.findByPk(data);
-        if(!response){
-            throw new AppError('Not able to find a resource',StatusCodes.NOT_FOUND);
+    async get(id, tx = db) {
+        const response = await tx.select().from(this.table).where(eq(this.table.id, id));
+        if (response.length === 0) {
+            throw new AppError('Not able to find a resource', StatusCodes.NOT_FOUND);
         }
-        return response;
+        return response[0];
     }
 
     /**
@@ -58,8 +54,8 @@ class CrudRepository {
      *
      * @returns {Promise<Model[]>} Array of all Sequelize model instances.
      */
-    async getAll(){
-        const response = await this.model.findAll();
+    async getAll(tx = db) {
+        const response = await tx.select().from(this.table);
         return response;
     }
 
@@ -71,21 +67,13 @@ class CrudRepository {
      * @param {number} id   - Primary key of the record to update.
      * @returns {Promise<Array>} Sequelize update result array [affectedRowCount].
      */
-    async update(data, id) {
-        const response = await this.model.update(data, {
-            where: { id: id }
-        });
-        if(response[0] == 0) {
+    async update(data, id, tx = db) {
+        const response = await tx.update(this.table).set(data).where(eq(this.table.id, id)).returning();
+        if (response.length === 0) {
             throw new AppError('Resource to be updated not found', StatusCodes.NOT_FOUND);
         }
-        return response;
+        return [response.length];
     }
-
-    
-
-
-
 }
-
 
 module.exports = CrudRepository;

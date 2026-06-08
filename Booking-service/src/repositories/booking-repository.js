@@ -9,18 +9,18 @@
  * which cannot be expressed through the generic CrudRepository interface.
  */
 
-const {StatusCodes} = require('http-status-codes')
+const { StatusCodes } = require('http-status-codes');
 const AppError = require('../utils/errors/app-error');
-const {Booking} = require('../models');
+const db = require('../db');
+const { bookings } = require('../db/schema');
 const CrudRepository = require('./crud-repository');
-const {Op} = require('sequelize');
-const { ENUMS } = require('../utils/common')
-const {BOOKED,CANCELLED,INITIATED} = ENUMS.BOOKING_STATUS;
+const { eq, and, lt, ne, notInArray, inArray, desc } = require('drizzle-orm');
+const { ENUMS } = require('../utils/common');
+const { BOOKED, CANCELLED, INITIATED } = ENUMS.BOOKING_STATUS;
 
-
-class BookingRepository extends CrudRepository{
-    constructor(){
-        super(Booking);
+class BookingRepository extends CrudRepository {
+    constructor() {
+        super(bookings);
     }
 
     /*
@@ -31,48 +31,62 @@ class BookingRepository extends CrudRepository{
      * Receives: data (booking fields), transaction (Sequelize transaction object)
      * Returns:  newly created Booking instance
      */
-    async createBooking(data,transaction){
-        const response =  await Booking.create(data,{transaction:transaction});
-        return response;
+    async createBooking(data, tx = db) {
+        return await this.create(data, tx);
     }
 
     /*
-     * get (override)
-     * Fetches a booking by primary key, optionally bound to a transaction.
-     * Overrides base class to accept a transaction parameter — needed when the
-     * read must be part of a larger atomic operation (e.g. during payment or cancellation).
+     * getOldBookings
+     * Fetches all INITIATED/PENDING bookings older than the given timestamp.
+     * Called by the cron job BEFORE cancelling, so we have the data needed
+     * to publish seat restoration events to RabbitMQ.
      *
-     * Receives: id (number), transaction (optional)
-     * Returns:  Booking instance
-     * Throws:   AppError 404 if not found
+     * Receives: timestamp (Date) — cutoff time (now - 5 minutes)
+     * Returns:  array of Booking instances (may be empty)
      */
-    async get(data,transaction){
-            const response = await this.model.findByPk(data,{transaction:transaction});
-            if(!response){
-                throw new AppError('Not able to find a resource',StatusCodes.NOT_FOUND);
-            }
-            return response;
+    async getOldBookings(timestamp) {
+        return await db.select().from(bookings).where(
+            and(
+                lt(bookings.createdAt, timestamp),
+                notInArray(bookings.status, [BOOKED, CANCELLED])
+            )
+        );
     }
 
     /*
-     * update (override)
-     * Updates a booking row by id, bound to a transaction.
-     * Overrides base class to accept a transaction parameter — ensures the update
-     * is part of the same atomic operation as the surrounding queries.
+     * cancelBookingsByIds
+     * Bulk UPDATE — cancels exactly the bookings identified by the given IDs.
+     * Called after getOldBookings so we cancel precisely what we selected,
+     * avoiding race conditions from using the time filter twice.
      *
-     * Receives: data (fields to update), id (number), transaction (Sequelize transaction)
+     * Receives: ids (number[]) — array of booking primary keys
      * Returns:  [ affectedRows ]
-     * Throws:   AppError 404 if no row was updated
      */
-    async update(data, id, transaction) {
-        const response = await this.model.update(data, {
-            where: { id: id },
-            transaction: transaction
-        });
-        if(response[0] == 0) {
-            throw new AppError('Resource to be updated not found', StatusCodes.NOT_FOUND);
-        }
-        return response;
+    async cancelBookingsByIds(ids) {
+        if (!ids || ids.length === 0) return [0];
+        const response = await db.update(bookings)
+            .set({ status: CANCELLED })
+            .where(
+                and(
+                    inArray(bookings.id, ids),
+                    notInArray(bookings.status, [BOOKED, CANCELLED])
+                )
+            ).returning();
+        return [response.length];
+    }
+
+    /*
+     * getBookingsByUserId
+     * Fetches all bookings for a given user, ordered newest first.
+     * Used by the GET /my-bookings endpoint.
+     *
+     * Receives: userId (number)
+     * Returns:  array of Booking instances (may be empty)
+     */
+    async getBookingsByUserId(userId) {
+        return await db.select().from(bookings)
+            .where(eq(bookings.userId, userId))
+            .orderBy(desc(bookings.createdAt));
     }
 
     /*
@@ -90,84 +104,18 @@ class BookingRepository extends CrudRepository{
      * Receives: timestamp (Date) — the cutoff time (now - 5 minutes)
      * Returns:  [ affectedRows ] — 0 means no abandoned bookings found this tick
      */
-    /*
-     * getOldBookings
-     * Fetches all INITIATED/PENDING bookings older than the given timestamp.
-     * Called by the cron job BEFORE cancelling, so we have the data needed
-     * to publish seat restoration events to RabbitMQ.
-     *
-     * Receives: timestamp (Date) — cutoff time (now - 5 minutes)
-     * Returns:  array of Booking instances (may be empty)
-     */
-    async getOldBookings(timestamp) {
-        return await Booking.findAll({
-            where: {
-                createdAt: { [Op.lt]: timestamp },
-                status: { [Op.notIn]: [BOOKED, CANCELLED] }
-            }
-        });
-    }
-
-    /*
-     * cancelBookingsByIds
-     * Bulk UPDATE — cancels exactly the bookings identified by the given IDs.
-     * Called after getOldBookings so we cancel precisely what we selected,
-     * avoiding race conditions from using the time filter twice.
-     *
-     * Receives: ids (number[]) — array of booking primary keys
-     * Returns:  [ affectedRows ]
-     */
-    async cancelBookingsByIds(ids) {
-        return await Booking.update(
-            { status: CANCELLED },
-            {
-                where: {
-                    id: { [Op.in]: ids },
-                    status: { [Op.notIn]: [BOOKED, CANCELLED] } // safety: don't touch paid bookings
-                }
-            }
-        );
-    }
-
-    /*
-     * getBookingsByUserId
-     * Fetches all bookings for a given user, ordered newest first.
-     * Used by the GET /my-bookings endpoint.
-     *
-     * Receives: userId (number)
-     * Returns:  array of Booking instances (may be empty)
-     */
-    async getBookingsByUserId(userId) {
-        return await Booking.findAll({
-            where: { userId },
-            order: [['createdAt', 'DESC']]
-        });
-    }
-
-    async cancelOldBookings(timestamp){
-        const response = await Booking.update(
-            { status: CANCELLED },
-            {
-                where: {
-                    [Op.and]:[
-                        {
-                            createdAt: { [Op.lt]: timestamp }  // older than cutoff
-                        },
-                        {
-                            status: {[Op.ne]:BOOKED}           // not already paid
-                        },
-                        {
-                            status:{[Op.ne]:CANCELLED}         // not already cancelled
-                        }
-                    ]
-                }
-            }
-        );
-        return response;
+    async cancelOldBookings(timestamp) {
+        const response = await db.update(bookings)
+            .set({ status: CANCELLED })
+            .where(
+                and(
+                    lt(bookings.createdAt, timestamp),
+                    ne(bookings.status, BOOKED),
+                    ne(bookings.status, CANCELLED)
+                )
+            ).returning();
+        return [response.length];
     }
 }
-
-
-
 
 module.exports = BookingRepository;

@@ -1,10 +1,9 @@
-
 const { FlightRepository } = require('../repositories');
-
 const AppError = require('../utils/errors/app-error');
 const { StatusCodes } = require('http-status-codes');
 const { compareTime } = require('../utils/helpers/datetime-helpers');
-const { Op } = require('sequelize');
+const { and, between, gte, gt, eq, asc, desc } = require('drizzle-orm');
+const { flights, flightClasses } = require('../db/schema');
 const { Redis } = require('../config');
 const flightRepository = new FlightRepository();
 
@@ -36,17 +35,9 @@ async function createFlight(data){
         return flight;
     }catch(error){
         if(error instanceof AppError) throw error;
-        if(error.name == 'SequelizeValidationError'){
-            let explanation = [];
-            error.errors.forEach((err) => {
-                explanation.push(err.message);
-            });
-            throw new AppError(explanation, StatusCodes.BAD_REQUEST);
-        }
         throw new AppError('Cannot Create a new Flight Object', StatusCodes.INTERNAL_SERVER_ERROR);
     }
 }
-
 
 /**
  * Builds dynamic WHERE and ORDER clauses from URL query parameters, then fetches matching flights.
@@ -68,98 +59,86 @@ async function createFlight(data){
  * @returns {Promise<Flight[]>} Array of matching Flight instances with nested associations.
  */
 async function getAllFlights(filters){
-    let flightFilter = {};
-    let classFilter  = {};
-    let sortFilter   = [];
+    let flightFilterConditions = [];
+    let classFilterConditions = [];
+    let sortFilter = [];
     const endingTripTime = "23:59:59";
 
-    // ?trips=BOM-DEL
     if(filters.trips){
         const [departureAirportId, arrivalAirportId] = filters.trips.split("-");
         if(departureAirportId == arrivalAirportId){
             throw new AppError('Departure and arrival airport cannot be the same', StatusCodes.BAD_REQUEST);
         }
-        flightFilter.departureAirportId = departureAirportId;
-        flightFilter.arrivalAirportId   = arrivalAirportId;
+        flightFilterConditions.push(eq(flights.departureAirportId, departureAirportId));
+        flightFilterConditions.push(eq(flights.arrivalAirportId, arrivalAirportId));
     }
 
-    // ?price=500-2000  |  ?price=-2000 (no lower)  |  ?price=500 (no upper)
-    // Price now lives on FlightClasses — filter goes into classFilter.
     if(filters.price){
         const [minPrice, maxPrice] = filters.price.split("-");
-        classFilter.price = {
-            [Op.between]: [
-                (minPrice == '' ? 0 : minPrice),
-                (maxPrice == undefined ? 1000000 : maxPrice)
-            ]
-        };
+        classFilterConditions.push(between(
+            flightClasses.price,
+            minPrice === '' ? 0 : Number(minPrice),
+            maxPrice === undefined ? 1000000 : Number(maxPrice)
+        ));
     }
 
-    // ?travellers=3 — seat count now lives on FlightClasses — filter goes into classFilter.
     if(filters.travellers){
-        classFilter.totalSeats = {
-            [Op.gte]: filters.travellers
-        };
+        classFilterConditions.push(gte(flightClasses.totalSeats, Number(filters.travellers)));
     }
 
-    // ?seatClass=business — exact-match filter on the cabin type, goes into classFilter.
-    // When present, only flights that have that specific cabin are returned (INNER JOIN).
     if(filters.seatClass){
-        classFilter.seatClass = filters.seatClass;
+        classFilterConditions.push(eq(flightClasses.seatClass, filters.seatClass));
     }
 
-    // ?stopType=DIRECT | ?stopType=ONE_STOP — exact match on the Flights table ENUM.
     if(filters.stopType){
-        flightFilter.stopType = filters.stopType;
+        flightFilterConditions.push(eq(flights.stopType, filters.stopType));
     }
 
-    // ?tripDate=2026-04-15 — departure day range filter on the Flights table.
-    // Lower bound is max(start of day, now) so past flights on today's date are excluded.
-    // When no tripDate is given, still filter out departed flights with a plain > now check.
     if(filters.tripDate){
-        const endOfDay   = new Date(filters.tripDate + ' ' + endingTripTime);
+        const endOfDay = new Date(filters.tripDate + 'T' + endingTripTime);
         const startOfDay = new Date(filters.tripDate);
-        const now        = new Date();
-        flightFilter.departureTime = {
-            [Op.between]: [startOfDay > now ? startOfDay : now, endOfDay]
-        };
+        const now = new Date();
+        const start = startOfDay > now ? startOfDay : now;
+        flightFilterConditions.push(between(flights.departureTime, start, endOfDay));
     } else {
-        flightFilter.departureTime = { [Op.gt]: new Date() };
+        flightFilterConditions.push(gt(flights.departureTime, new Date()));
     }
 
-    // ?sort=price_ASC,departureTime_DESC
     if(filters.sort){
         const params = filters.sort.split(",");
-        sortFilter = params.map((param) => param.split("_"));
+        sortFilter = params.map((param) => {
+            const [col, dir] = param.split("_");
+            return dir === "ASC" ? asc(flights[col]) : desc(flights[col]);
+        });
     }
 
+    const flightFilter = flightFilterConditions.length > 0 ? and(...flightFilterConditions) : undefined;
+    const classFilter = classFilterConditions.length > 0 ? and(...classFilterConditions) : undefined;
+
     try {
-        // Cache key: stable JSON of the full filters object so that different param orders
-        // produce the same key (?trips=X&tripDate=Y == ?tripDate=Y&trips=X).
         const cacheKey = `flights:search:${JSON.stringify(filters, Object.keys(filters).sort())}`;
 
         try {
             const cached = await Redis.get(cacheKey);
             if(cached) return JSON.parse(cached);
         } catch {
-            // Redis down — fall through to DB
+            // Redis down
         }
 
-        const flights = await flightRepository.getAllFlights(flightFilter, classFilter, sortFilter);
+        const flightsResult = await flightRepository.getAllFlights(flightFilter, classFilter, sortFilter);
 
         try {
-            await Redis.set(cacheKey, JSON.stringify(flights), 'EX', CACHE_TTL);
+            await Redis.set(cacheKey, JSON.stringify(flightsResult), 'EX', CACHE_TTL);
         } catch {
-            // Redis down — return result anyway
+            // Redis down
         }
 
-        return flights;
+        return flightsResult;
     } catch(error) {
         if(error instanceof AppError) throw error;
         throw new AppError('Cannot Fetch data of all the Flights', StatusCodes.INTERNAL_SERVER_ERROR);
     }
 }
-
 
 /**
  * Fetches a single flight by primary key with all associations (Airplane, Airports, Cities,
@@ -214,11 +193,9 @@ async function updateSeats(data){
     }
 }
 
-
-
 module.exports = {
     createFlight,
     getAllFlights,
     getFlight,
     updateSeats
-}
+};

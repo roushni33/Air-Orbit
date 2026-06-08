@@ -1,11 +1,9 @@
 const CrudRepository = require('./crud-repository.js');
+const { airplanes } = require('../db/schema.js');
 
-const {Airplane} = require('../models/index.js');
-
-
-class AirplaneRepository extends CrudRepository{
+class AirplaneRepository extends CrudRepository {
     constructor(){
-        super(Airplane);
+        super(airplanes);
     }
 }
 

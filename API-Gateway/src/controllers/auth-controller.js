@@ -1,7 +1,9 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { StatusCodes } = require('http-status-codes');
-const { User } = require('../models');
+const db = require('../db');
+const { users } = require('../db/schema');
+const { eq } = require('drizzle-orm');
 const redis = require('../config/redis-config');
 const { JWT_SECRET, JWT_EXPIRY, SALT_ROUNDS } = require('../config/server-config');
 
@@ -23,14 +25,18 @@ async function register(req, res) {
         }
 
         const hashed = await bcrypt.hash(password, SALT_ROUNDS);
-        const user = await User.create({ email, password: hashed });
-        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
-
-        return res.status(StatusCodes.CREATED).json({ token, userId: user.id });
-    } catch (err) {
-        if (err.name === 'SequelizeUniqueConstraintError') {
-            return res.status(StatusCodes.CONFLICT).json({ message: 'An account with this email already exists' });
+        
+        try {
+            const [user] = await db.insert(users).values({ email, password: hashed }).returning();
+            const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+            return res.status(StatusCodes.CREATED).json({ token, userId: user.id });
+        } catch (dbErr) {
+            if (dbErr.code === '23505') { // Postgres unique violation
+                return res.status(StatusCodes.CONFLICT).json({ message: 'An account with this email already exists' });
+            }
+            throw dbErr;
         }
+    } catch (err) {
         console.error(err.message);
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Registration failed. Please try again.' });
     }
@@ -47,11 +53,11 @@ async function login(req, res) {
             return res.status(StatusCodes.BAD_REQUEST).json({ message: 'Please enter a valid email address' });
         }
 
-        const user = await User.findOne({ where: { email } });
-        if (!user) {
-            // Generic message — don't reveal whether the email exists
+        const userRows = await db.select().from(users).where(eq(users.email, email));
+        if (userRows.length === 0) {
             return res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Incorrect email or password' });
         }
+        const user = userRows[0];
 
         const match = await bcrypt.compare(password, user.password);
         if (!match) {

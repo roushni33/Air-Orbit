@@ -13,20 +13,17 @@
  *   - any query that must be part of the transaction must receive { transaction } in options
  */
 
-const axios = require('axios')
-
-const {BookingRepository} = require('../repositories');
-
-const { ServerConfig, RabbitMQ } = require('../config')
-const db = require('../models');
+const axios = require('axios');
+const { BookingRepository } = require('../repositories');
+const { ServerConfig, RabbitMQ } = require('../config');
+const db = require('../db');
 const AppError = require('../utils/errors/app-error');
 const { StatusCodes } = require('http-status-codes');
 
 // single shared instance of the repository used across all service functions
-const bookingRepository = new BookingRepository()
-const { ENUMS } = require('../utils/common')
-const {BOOKED,CANCELLED} = ENUMS.BOOKING_STATUS;
-
+const bookingRepository = new BookingRepository();
+const { ENUMS } = require('../utils/common');
+const { BOOKED, CANCELLED } = ENUMS.BOOKING_STATUS;
 
 /*
  * createBooking
@@ -50,15 +47,10 @@ const {BOOKED,CANCELLED} = ENUMS.BOOKING_STATUS;
  * Throws:  AppError 400 if not enough seats, or propagates any other error
  */
 async function createBooking(data){
-
-    const transaction = await db.sequelize.transaction();
-    try{
-        // Step 1: fetch flight details from Flight Service (includes FlightClasses since getFlight eager-loads them)
-        // flight.data.data because Flight Service wraps response as { success, message, data: { flightObj } }
+    return await db.transaction(async (transaction) => {
         const flight = await axios.get(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${data.flightId}`);
         const flightData = flight.data.data;
 
-        // Step 2: locate the requested cabin class and validate seat availability
         const seatClass = data.seatClass || 'economy';
         const flightClasses = flightData.FlightClasses || [];
         const flightClass = flightClasses.find(fc => fc.seatClass === seatClass);
@@ -70,33 +62,24 @@ async function createBooking(data){
             throw new AppError('Not enough seats available', StatusCodes.BAD_REQUEST);
         }
 
-        // Step 3: calculate cost using cabin-class price
         const totalBillingAmount = data.noofSeats * flightClass.price;
         const bookingPayload = {
             ...data,
             totalCost: totalBillingAmount,
-            noOfSeats: data.noofSeats,  // map request field name to model field name
+            noOfSeats: data.noofSeats,
             seatClass
         };
 
-        // Step 4: create booking in INITIATED state — user has 10 mins to complete payment
         const booking = await bookingRepository.createBooking(bookingPayload, transaction);
 
-        // Step 5: reserve seats on the flight service for the specific cabin class
         await axios.patch(`${ServerConfig.FLIGHT_SERVICE}/api/v1/flights/${data.flightId}/seats`, {
             seats: data.noofSeats,
             seatClass
         });
 
-        // Step 6: everything succeeded, make it permanent
-        await transaction.commit();
         return booking;
-    }catch(error){
-        await transaction.rollback();
-        throw error;
-    }
+    });
 }
-
 
 /*
  * makePayment
@@ -125,42 +108,30 @@ async function createBooking(data){
  * Throws:  AppError 400 for expired/mismatched booking, propagates other errors
  */
 async function makePayment(data){
-    const transaction = await db.sequelize.transaction();
-    try {
-        // Step 1: fetch booking
-        const bookingDetails = await bookingRepository.get(data.bookingId);
+    await db.transaction(async (transaction) => {
+        const bookingDetails = await bookingRepository.get(data.bookingId, transaction);
 
-        // Step 2: already cancelled — cron may have beaten us to it
         if(bookingDetails.status == CANCELLED){
             throw new AppError('The booking has expired',StatusCodes.BAD_REQUEST);
         }
 
-        // Step 3: check 10-minute payment window
         const bookingTime = new Date(bookingDetails.createdAt);
         const currentTime = new Date();
         if(currentTime - bookingTime > 600000){
-            // cancelBooking has its own transaction — commits seat restoration independently
             await cancelBooking(data.bookingId);
             throw new AppError('The booking has expired',StatusCodes.BAD_REQUEST);
         }
 
-        // Step 4: cost validation — prevents tampered/incorrect payment amounts
         if(bookingDetails.totalCost != data.totalCost){
             throw new AppError('The amount of the payment doesnt match',StatusCodes.BAD_REQUEST);
         }
 
-        // Step 5: user validation — ensures only the original booker can complete payment
-        if(bookingDetails.userId!=data.userId){
+        if(bookingDetails.userId != data.userId){
             throw new AppError('The user corresponding to the booking doesnt match',StatusCodes.BAD_REQUEST );
         }
 
-        // Step 6: payment assumed successful — mark as BOOKED
-        const response = await bookingRepository.update({status:BOOKED},data.bookingId,transaction);
-        await transaction.commit();
+        await bookingRepository.update({status:BOOKED}, data.bookingId, transaction);
 
-        // Step 7: publish booking.confirmed event — Reminder Service will send confirmation email
-        // Wrapped in its own try-catch: a failed publish must NOT affect the payment response.
-        // The booking is already committed to DB — that is the source of truth.
         try {
             const channel = RabbitMQ.getChannel();
             channel.sendToQueue(
@@ -177,11 +148,7 @@ async function makePayment(data){
         } catch (publishError) {
             console.error('Failed to publish booking.confirmed event:', publishError.message);
         }
-
-    } catch (error) {
-        await transaction.rollback();
-        throw error;
-    }
+    });
 }
 
 /*
@@ -213,22 +180,15 @@ async function makePayment(data){
  * Throws:  propagates any DB error up to the caller
  */
 async function cancelBooking(bookingId){
-    const transaction = await db.sequelize.transaction();
-    try {
+    await db.transaction(async (transaction) => {
         const bookingDetails = await bookingRepository.get(bookingId, transaction);
 
-        // idempotent — if already cancelled, nothing to do
         if(bookingDetails.status == CANCELLED){
-            await transaction.commit();
             return true;
         }
 
         await bookingRepository.update({status: CANCELLED}, bookingId, transaction);
-        await transaction.commit();
 
-        // Publish seat restoration event AFTER commit — booking is already cancelled in DB.
-        // Flight Service subscriber increments totalSeats back asynchronously.
-        // Wrapped in try-catch: a failed publish does not affect the cancellation.
         try {
             const channel = RabbitMQ.getChannel();
             channel.sendToQueue(
@@ -237,18 +197,14 @@ async function cancelBooking(bookingId){
                     bookingId: bookingId,
                     flightId:  bookingDetails.flightId,
                     seats:     bookingDetails.noOfSeats,
-                    seatClass: bookingDetails.seatClass   // route restoration to correct cabin class
+                    seatClass: bookingDetails.seatClass
                 })),
                 { persistent: true }
             );
         } catch (publishError) {
             console.error('Failed to publish seat.restoration event:', publishError.message);
         }
-
-    } catch (error) {
-        await transaction.rollback();
-        throw error;
-    }
+    });
 }
 
 /*
@@ -267,17 +223,12 @@ async function cancelOldBookings(){
     try {
         const time = new Date(Date.now() - 1000 * 600);
 
-        // Step 1: fetch expired bookings BEFORE cancelling — we need the data for RabbitMQ
         const expiredBookings = await bookingRepository.getOldBookings(time);
         if (!expiredBookings.length) return [];
 
-        // Step 2: cancel exactly these bookings by their IDs (atomic, no race condition)
         const ids = expiredBookings.map(b => b.id);
         const response = await bookingRepository.cancelBookingsByIds(ids);
 
-        // Step 3: publish one seat.restoration event per cancelled booking
-        // Flight Service subscribes and restores seats asynchronously
-        // If Flight Service is down, events wait durably in the queue until it recovers
         const channel = RabbitMQ.getChannel();
         expiredBookings.forEach(booking => {
             channel.sendToQueue(
@@ -286,9 +237,9 @@ async function cancelOldBookings(){
                     bookingId: booking.id,
                     flightId:  booking.flightId,
                     seats:     booking.noOfSeats,
-                    seatClass: booking.seatClass   // route restoration to correct cabin class
+                    seatClass: booking.seatClass
                 })),
-                { persistent: true } // message survives RabbitMQ restart
+                { persistent: true }
             );
         });
 
@@ -298,9 +249,6 @@ async function cancelOldBookings(){
         console.error('cancelOldBookings cron error:', error.message);
     }
 }
-
-
-
 
 /*
  * cancelUserBooking
@@ -331,7 +279,6 @@ async function cancelUserBooking(data) {
     await cancelBooking(data.bookingId);
 }
 
-
 /*
  * getBookingsByUser
  *
@@ -345,12 +292,11 @@ async function getBookingsByUser(userId) {
     return await bookingRepository.getBookingsByUserId(userId);
 }
 
-
 module.exports = {
-createBooking,
-makePayment,
-cancelBooking,
-cancelOldBookings,
-cancelUserBooking,
-getBookingsByUser
-}
+    createBooking,
+    makePayment,
+    cancelBooking,
+    cancelOldBookings,
+    cancelUserBooking,
+    getBookingsByUser
+};

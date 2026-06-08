@@ -8,18 +8,24 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "npx nodemon src/index.js"
+    "dev": "npx nodemon src/index.js",
+    "seed": "node src/seeders/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "amqplib": "^1.0.6",
     "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
     "http-status-codes": "^2.3.0",
     "ioredis": "^5.10.1",
-    "mysql2": "^3.20.0",
     "nodemon": "^3.1.14",
-    "sequelize": "^6.37.8",
-    "sequelize-cli": "^6.6.5",
+    "pg": "^8.21.0",
     "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
   }
 }

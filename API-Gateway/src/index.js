@@ -1,7 +1,6 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const { PORT } = require('./config/server-config');
-const { sequelize } = require('./models');
 const apiRoutes = require('./routes');
 
 const app = express();
@@ -24,10 +23,6 @@ app.use('/api', apiRoutes);
 
 app.listen(PORT, async () => {
     console.log(`API Gateway running on port ${PORT}`);
-    try {
-        await sequelize.authenticate();
-        console.log('DB connected');
-    } catch (err) {
-        console.error('DB connection failed:', err.message);
-    }
+    // DB connection is now handled lazily by Drizzle on first query
+    console.log('DB ready (Drizzle/PostgreSQL)');
 });

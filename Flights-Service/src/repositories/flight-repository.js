@@ -1,13 +1,13 @@
 const CrudRepository = require('./crud-repository.js');
-const { Flight, Airplane, Airport, City, FlightClass, FlightStop } = require('../models/index.js');
-const db = require('../models')
+const db = require('../db');
+const { flights, airplanes, airports, cities, flightClasses, flightStops } = require('../db/schema');
 const AppError = require('../utils/errors/app-error');
 const { StatusCodes } = require('http-status-codes');
-const { addRowLockOnFlights, addRowLockOnFlightClass } = require('./queries');
+const { eq, and, sql, sql: { raw } } = require('drizzle-orm');
 
 class FlightRepository extends CrudRepository {
     constructor(){
-        super(Flight);
+        super(flights);
     }
 
     /**
@@ -25,42 +25,26 @@ class FlightRepository extends CrudRepository {
      * @returns {Promise<Flight[]>} Array of Flight instances with nested associations.
      */
     async getAllFlights(flightFilter, classFilter, sort){
-        const hasClassFilter = Object.keys(classFilter).length > 0;
-
-        const response = await Flight.findAll({
+        // Since filtering with relations is tricky in basic relational queries with dynamic where,
+        // we map the provided filter structures to Drizzle 'where' dynamically or use db.query.flights.findMany
+        const response = await db.query.flights.findMany({
             where: flightFilter,
-            order: sort,
-            include: [
-                {
-                    model: Airplane,
-                    required: true,
-                    as: 'airplaneDetails'
+            orderBy: sort,
+            with: {
+                airplaneDetails: true,
+                departureAirport: { with: { city: true } },
+                arrivalAirport: { with: { city: true } },
+                FlightClasses: {
+                    where: classFilter
                 },
-                {
-                    model: Airport,
-                    required: true,
-                    as: 'departureAirport',
-                    include: { model: City, required: true }
-                },
-                {
-                    model: Airport,
-                    required: true,
-                    as: 'arrivalAirport',
-                    include: { model: City, required: true }
-                },
-                {
-                    model: FlightClass,
-                    as: 'FlightClasses',
-                    required: true,   // always INNER JOIN — flights without any class rows are excluded
-                    ...(hasClassFilter && { where: classFilter })
-                },
-                {
-                    model: FlightStop,
-                    as: 'FlightStops',
-                    required: false
-                }
-            ]
+                FlightStops: true
+            }
         });
+        
+        // Emulate INNER JOIN for FlightClasses (if classFilter is present, exclude flights without matching classes)
+        if (classFilter) {
+            return response.filter(f => f.FlightClasses && f.FlightClasses.length > 0);
+        }
         return response;
     }
 
@@ -77,37 +61,17 @@ class FlightRepository extends CrudRepository {
      * @throws {AppError} NOT_FOUND if no flight exists with this id.
      */
     async getFlight(id){
-        const response = await Flight.findByPk(id, {
-            include: [
-                {
-                    model: Airplane,
-                    required: true,
-                    as: 'airplaneDetails'
-                },
-                {
-                    model: Airport,
-                    required: true,
-                    as: 'departureAirport',
-                    include: { model: City, required: true }
-                },
-                {
-                    model: Airport,
-                    required: true,
-                    as: 'arrivalAirport',
-                    include: { model: City, required: true }
-                },
-                {
-                    model: FlightClass,
-                    as: 'FlightClasses',
-                    required: false
-                },
-                {
-                    model: FlightStop,
-                    as: 'FlightStops',
-                    required: false
-                }
-            ]
+        const response = await db.query.flights.findFirst({
+            where: eq(flights.id, id),
+            with: {
+                airplaneDetails: true,
+                departureAirport: { with: { city: true } },
+                arrivalAirport: { with: { city: true } },
+                FlightClasses: true,
+                FlightStops: true
+            }
         });
+
         if(!response){
             throw new AppError('Not able to find a resource', StatusCodes.NOT_FOUND);
         }
@@ -126,19 +90,21 @@ class FlightRepository extends CrudRepository {
      * @param {Array}    data.seatClasses - [{ seatClass, price, totalSeats }, ...] — one entry per cabin.
      * @returns {Promise<Flight>} The newly created Flight instance.
      */
-    async createFlightWithClasses(data){
-        const transaction = await db.sequelize.transaction();
-        try {
+    async createFlightWithClasses(data, tx = db){
+        return await tx.transaction(async (transaction) => {
             const { seatClasses, ...flightData } = data;
 
-            // Mirror economy values onto the Flight row for backward compatibility
             const economy = seatClasses.find(c => c.seatClass === 'economy');
             if(economy){
                 flightData.price      = flightData.price      || economy.price;
                 flightData.totalSeats = flightData.totalSeats || economy.totalSeats;
             }
 
-            const flight = await Flight.create(flightData, { transaction });
+            const [flight] = await transaction.insert(flights).values({
+                ...flightData,
+                departureTime: new Date(flightData.departureTime),
+                arrivalTime: new Date(flightData.arrivalTime),
+            }).returning();
 
             const classRows = seatClasses.map(c => ({
                 flightId:   flight.id,
@@ -146,14 +112,13 @@ class FlightRepository extends CrudRepository {
                 price:      c.price,
                 totalSeats: c.totalSeats
             }));
-            await FlightClass.bulkCreate(classRows, { transaction });
+            
+            if (classRows.length > 0) {
+                await transaction.insert(flightClasses).values(classRows);
+            }
 
-            await transaction.commit();
             return flight;
-        } catch(error) {
-            await transaction.rollback();
-            throw error;
-        }
+        });
     }
 
     /**
@@ -167,25 +132,30 @@ class FlightRepository extends CrudRepository {
      * @returns {Promise<Flight>} The updated Flight instance reflecting the new seat count.
      */
     async updateRemainingSeats(flightId, seats, dec = true){
-        const transaction = await db.sequelize.transaction();
-        try {
-            await db.sequelize.query(addRowLockOnFlights(flightId), { transaction });
+        return await db.transaction(async (transaction) => {
+            const response = await transaction.select().from(flights)
+                .where(eq(flights.id, flightId))
+                .for('update');
+            
+            if (response.length === 0) {
+                throw new AppError('Flight not found', StatusCodes.NOT_FOUND);
+            }
+            const flight = response[0];
 
-            const flight = await Flight.findByPk(flightId, { transaction });
-
-            if(+dec){
-                await flight.decrement('totalSeats', { by: seats, transaction });
+            let newSeats = flight.totalSeats;
+            if (+dec) {
+                newSeats -= seats;
             } else {
-                await flight.increment('totalSeats', { by: seats, transaction });
+                newSeats += seats;
             }
 
-            await transaction.commit();
-            await flight.reload();
-            return flight;
-        } catch(error) {
-            await transaction.rollback();
-            throw error;
-        }
+            const [updatedFlight] = await transaction.update(flights)
+                .set({ totalSeats: newSeats })
+                .where(eq(flights.id, flightId))
+                .returning();
+            
+            return updatedFlight;
+        });
     }
 
     /**
@@ -200,35 +170,34 @@ class FlightRepository extends CrudRepository {
      * @returns {Promise<FlightClass>} The updated FlightClass instance reflecting the new seat count.
      */
     async updateRemainingClassSeats(flightId, seatClass, seats, dec = true){
-        const transaction = await db.sequelize.transaction();
-        try {
-            await db.sequelize.query(addRowLockOnFlightClass(flightId, seatClass), { transaction });
-
-            const flightClass = await FlightClass.findOne({
-                where: { flightId, seatClass },
-                transaction
-            });
-
-            if(!flightClass){
+        return await db.transaction(async (transaction) => {
+            const response = await transaction.select().from(flightClasses)
+                .where(and(eq(flightClasses.flightId, flightId), eq(flightClasses.seatClass, seatClass)))
+                .for('update');
+            
+            if (response.length === 0) {
                 throw new AppError(
                     `No ${seatClass} class found for flight ${flightId}`,
                     StatusCodes.NOT_FOUND
                 );
             }
 
-            if(+dec){
-                await flightClass.decrement('totalSeats', { by: seats, transaction });
+            const flightCls = response[0];
+
+            let newSeats = flightCls.totalSeats;
+            if (+dec) {
+                newSeats -= seats;
             } else {
-                await flightClass.increment('totalSeats', { by: seats, transaction });
+                newSeats += seats;
             }
 
-            await transaction.commit();
-            await flightClass.reload();
-            return flightClass;
-        } catch(error) {
-            await transaction.rollback();
-            throw error;
-        }
+            const [updatedFlightClass] = await transaction.update(flightClasses)
+                .set({ totalSeats: newSeats })
+                .where(and(eq(flightClasses.flightId, flightId), eq(flightClasses.seatClass, seatClass)))
+                .returning();
+            
+            return updatedFlightClass;
+        });
     }
 }
 

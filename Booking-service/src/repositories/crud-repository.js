@@ -17,89 +17,49 @@
  *    (e.g. transaction support, custom queries, eager loading)
  */
 
-const { Logger } = require('../config');
+const { StatusCodes } = require('http-status-codes');
 const AppError = require('../utils/errors/app-error');
-const {StatusCodes} = require('http-status-codes');
-
+const db = require('../db');
+const { eq } = require('drizzle-orm');
 
 class CrudRepository {
-    constructor(model){
-        // the Sequelize model this repository operates on (e.g. Booking)
-        this.model = model;
+    constructor(table) {
+        this.table = table;
     }
 
-    /*
-     * create
-     * Inserts a new record. Does NOT support transactions — override in subclass if needed.
-     * Receives: data object matching the model's columns
-     * Returns:  the newly created Sequelize model instance
-     */
-    async create(data){
-            const response = await this.model.create(data);
-            return response;
-    }
-
-    /*
-     * destroy
-     * Deletes a record by primary key.
-     * Receives: id (number)
-     * Returns:  number of rows deleted
-     * Throws:   AppError 404 if no row found with that id
-     */
-    async destroy(data){
-            const response = await this.model.destroy({
-                where:{
-                    id: data
-                }
-            });
-            if(!response){
-                throw new AppError('Not able to find the resource',StatusCodes.NOT_FOUND);
-            }
-            return response;
-    }
-
-    /*
-     * get
-     * Fetches a single record by primary key. Does NOT support transactions — override if needed.
-     * Receives: id (number)
-     * Returns:  Sequelize model instance
-     * Throws:   AppError 404 if not found
-     */
-    async get(data){
-            const response = await this.model.findByPk(data);
-            if(!response){
-                throw new AppError('Not able to find a resource',StatusCodes.NOT_FOUND);
-            }
-            return response;
-    }
-
-    /*
-     * getAll
-     * Fetches all records for this model with no filters.
-     * Returns: array of Sequelize model instances
-     */
-    async getAll(){
-            const response = await this.model.findAll();
-            return response;
-    }
-
-    /*
-     * update
-     * Updates fields on a record by primary key. Does NOT support transactions — override if needed.
-     * Receives: data (object of fields to update), id (number)
-     * Returns:  [ affectedRows ] — Sequelize update response
-     * Throws:   AppError 404 if no row was updated (id not found)
-     */
-    async update(data, id) {
-        const response = await this.model.update(data, {
-            where: { id: id }
-        });
-        if(response[0] == 0) {
-            throw new AppError('Resource to be updated not found', StatusCodes.NOT_FOUND);
-        }
+    async create(data, tx = db) {
+        const [response] = await tx.insert(this.table).values(data).returning();
         return response;
     }
-}
 
+    async destroy(id, tx = db) {
+        const response = await tx.delete(this.table).where(eq(this.table.id, id)).returning();
+        if (response.length === 0) {
+            throw new AppError('Not able to find the resource', StatusCodes.NOT_FOUND);
+        }
+        return response.length;
+    }
+
+    async get(id, tx = db) {
+        const response = await tx.select().from(this.table).where(eq(this.table.id, id));
+        if (response.length === 0) {
+            throw new AppError('Not able to find a resource', StatusCodes.NOT_FOUND);
+        }
+        return response[0];
+    }
+
+    async getAll(tx = db) {
+        const response = await tx.select().from(this.table);
+        return response;
+    }
+
+    async update(data, id, tx = db) {
+        const response = await tx.update(this.table).set(data).where(eq(this.table.id, id)).returning();
+        if (response.length === 0) {
+            throw new AppError('Resource to be updated not found', StatusCodes.NOT_FOUND);
+        }
+        return [response.length]; // Keeping the array format [affectedRows]
+    }
+}
 
 module.exports = CrudRepository;

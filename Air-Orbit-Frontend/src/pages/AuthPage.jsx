@@ -17,14 +17,14 @@ function validate(mode, form) {
 
 export default function AuthPage() {
   const { login } = useAuth();
-  const navigate   = useNavigate();
-  const location   = useLocation();
-  const returnTo    = location.state?.returnTo    || '/';
+  const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = location.state?.returnTo || '/';
   const returnState = location.state?.returnState || null;
 
-  const [mode, setMode]       = useState('login');
-  const [form, setForm]       = useState({ email: '', password: '' });
-  const [error, setError]     = useState(null);
+  const [mode, setMode] = useState('login');
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -46,7 +46,7 @@ export default function AuthPage() {
     try {
       if (mode === 'register') {
         const { data } = await api.post('/auth/register', {
-          email:    form.email,
+          email: form.email,
           password: form.password,
         });
         // Register returns token directly — no need for a second login call
@@ -54,7 +54,7 @@ export default function AuthPage() {
         navigate(returnTo, { state: returnState, replace: true });
       } else {
         const { data } = await api.post('/auth/login', {
-          email:    form.email,
+          email: form.email,
           password: form.password,
         });
         login(data.token, data.userId);
@@ -133,7 +133,7 @@ export default function AuthPage() {
             className="w-full bg-aa-horizon text-aa-cream font-body text-[15px] font-medium py-3.5 rounded-lg border-none cursor-pointer transition-opacity duration-300 hover:opacity-85 disabled:opacity-60 disabled:cursor-not-allowed mt-1"
           >
             {loading
-              ? 'Please waitâ€¦'
+              ? 'Please wait...'
               : mode === 'login' ? 'Sign in' : 'Create account'}
           </button>
 

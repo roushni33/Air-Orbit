@@ -1,19 +1,19 @@
-﻿services:
-  mysql:
-    image: mysql:8.4
-    container_name: air-orbit-mysql
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: air-orbit-postgres
     restart: unless-stopped
     env_file:
       - .env.docker
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-localdev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
     ports:
-      - "3307:3306"
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql-init.sql:/docker-entrypoint-initdb.d/mysql-init.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sh:/docker-entrypoint-initdb.d/postgres-init.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -55,7 +55,7 @@
     container_name: air-orbit-flights-seeder
     restart: "no"
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -66,17 +66,17 @@
     environment:
       NODE_ENV: development
       PORT: 3000
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-localdev}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
       DB_NAME: FLIGHTS
-      DB_DIALECT: mysql
+      DB_DIALECT: postgres
       REDIS_URL: redis://redis:6379
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      WAIT_FOR: mysql:3306,redis:6379,rabbitmq:5672
-      MIGRATE_CMD: npx sequelize-cli db:migrate --config src/config/config.js --migrations-path src/migrations --env development
-      SEED_CMD: npx sequelize-cli db:seed:all --config src/config/config.js --seeders-path src/seeders --env development
+      WAIT_FOR: postgres:5432,redis:6379,rabbitmq:5672
+      MIGRATE_CMD: npx drizzle-kit push
+      SEED_CMD: node src/seeders/index.js
       START_CMD: echo Flights seeding complete
 
   flights-service:
@@ -86,7 +86,7 @@
     container_name: air-orbit-flights-service
     restart: unless-stopped
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -99,15 +99,15 @@
     environment:
       NODE_ENV: development
       PORT: 3000
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-localdev}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
       DB_NAME: FLIGHTS
-      DB_DIALECT: mysql
+      DB_DIALECT: postgres
       REDIS_URL: redis://redis:6379
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      WAIT_FOR: mysql:3306,redis:6379,rabbitmq:5672
+      WAIT_FOR: postgres:5432,redis:6379,rabbitmq:5672
       START_CMD: npm start
     ports:
       - "3000:3000"
@@ -124,7 +124,7 @@
     container_name: air-orbit-booking-service
     restart: unless-stopped
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -138,16 +138,16 @@
       NODE_ENV: development
       PORT: 4000
       FLIGHT_SERVICE: http://flights-service:3000
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-localdev}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
       DB_NAME: bookings_db
-      DB_DIALECT: mysql
+      DB_DIALECT: postgres
       REDIS_URL: redis://redis:6379
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      WAIT_FOR: mysql:3306,redis:6379,rabbitmq:5672,flights-service:3000
-      MIGRATE_CMD: npx sequelize-cli db:migrate --config src/config/config.js --migrations-path src/migrations --env development
+      WAIT_FOR: postgres:5432,redis:6379,rabbitmq:5672,flights-service:3000
+      MIGRATE_CMD: npx drizzle-kit push
       START_CMD: npm start
     ports:
       - "4000:4000"
@@ -164,7 +164,7 @@
     container_name: air-orbit-api-gateway
     restart: unless-stopped
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -179,12 +179,12 @@
     environment:
       NODE_ENV: development
       PORT: 5000
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-localdev}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
       DB_NAME: auth_db
-      DB_DIALECT: mysql
+      DB_DIALECT: postgres
       JWT_SECRET: ${JWT_SECRET:-localdevsecret}
       JWT_EXPIRY: ${JWT_EXPIRY:-24h}
       FLIGHTS_SERVICE: http://flights-service:3000
@@ -192,8 +192,8 @@
       REDIS_URL: redis://redis:6379
       SALT_ROUNDS: ${SALT_ROUNDS:-10}
       ALLOWED_ORIGIN: http://localhost:5173
-      WAIT_FOR: mysql:3306,redis:6379,rabbitmq:5672,flights-service:3000,booking-service:4000
-      MIGRATE_CMD: npx sequelize-cli db:migrate --config src/config/database-config.js --migrations-path src/migrations --env development
+      WAIT_FOR: postgres:5432,redis:6379,rabbitmq:5672,flights-service:3000,booking-service:4000
+      MIGRATE_CMD: npx drizzle-kit push
       START_CMD: npm start
     ports:
       - "5000:5000"
@@ -237,6 +237,6 @@
       - "5173:80"
 
 volumes:
-  mysql_data:
+  postgres_data:
   redis_data:
   rabbitmq_data:
