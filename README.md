@@ -1,4 +1,4 @@
-﻿# Air Orbit
+# Air Orbit
 
 Air Orbit is primarily an advanced airline booking system built as a full-stack microservices monorepo. The React frontend presents the system as a fictional airline website called "Air Orbit" so the booking, payment, seat inventory, cancellation, and notification workflows can be tested end to end through a realistic user interface.
 
@@ -209,24 +209,24 @@ All frontend API traffic goes through the API gateway on `http://localhost:5000/
 
 Every seat-count mutation runs inside a Sequelize unmanaged transaction with a `SELECT ... FOR UPDATE` row lock on the `FlightClasses` row. This serialises concurrent booking requests for the same cabin: the second request blocks at the lock until the first commits, then reads the updated count. If the locked row now has insufficient seats, it gets a 400, not a negative seat count.
 
-The booking creation itself is a cross-service transaction â€” the booking record and the HTTP seat deduction to the Flights Service must both succeed. If the PATCH fails, the transaction rolls back and no ghost booking persists.
+The booking creation itself is a cross-service transaction — the booking record and the HTTP seat deduction to the Flights Service must both succeed. If the PATCH fails, the transaction rolls back and no ghost booking persists.
 
 ### Seat Expiry: Two-Layer System
 
 The 10-minute payment window is enforced by two independent mechanisms running in parallel:
 
-- **Cron janitor** â€” runs every 5 minutes, bulk-cancels all `INITIATED` bookings older than 10 minutes, publishes one `seat.restoration` RabbitMQ event per booking.
-- **Payment bouncer** â€” at the moment a user calls `/payment`, the service checks the booking age. If expired, it cancels immediately and returns 400, closing the worst-case 5-minute cron lag.
+- **Cron janitor** — runs every 5 minutes, bulk-cancels all `INITIATED` bookings older than 10 minutes, publishes one `seat.restoration` RabbitMQ event per booking.
+- **Payment bouncer** — at the moment a user calls `/payment`, the service checks the booking age. If expired, it cancels immediately and returns 400, closing the worst-case 5-minute cron lag.
 
 ### Idempotency on Payment
 
-The `POST /booking/payment` endpoint requires an `Idempotency-Key` UUID header. The first call executes the payment and caches `{ statusCode, body }` in Redis for 24 hours. Any retry with the same key returns the cached response â€” the handler never runs twice. Only 2xx responses are cached; a failed payment can be retried with the same key after the client corrects the issue.
+The `POST /booking/payment` endpoint requires an `Idempotency-Key` UUID header. The first call executes the payment and caches `{ statusCode, body }` in Redis for 24 hours. Any retry with the same key returns the cached response — the handler never runs twice. Only 2xx responses are cached; a failed payment can be retried with the same key after the client corrects the issue.
 
 If Redis is down, the middleware fails open and lets the request through rather than blocking the payment endpoint.
 
 ### Event-Driven Seat Restoration
 
-All seat restoration on cancellation (manual, cron, or payment expiry) goes through a durable RabbitMQ `seat.restoration` queue. The Flights Service subscribes and increments the cabin seat count. Events survive RabbitMQ restarts (`persistent: true`) and wait in the queue if the Flights Service is temporarily down â€” no seat count is permanently lost.
+All seat restoration on cancellation (manual, cron, or payment expiry) goes through a durable RabbitMQ `seat.restoration` queue. The Flights Service subscribes and increments the cabin seat count. Events survive RabbitMQ restarts (`persistent: true`) and wait in the queue if the Flights Service is temporarily down — no seat count is permanently lost.
 
 Events are published **after** the transaction commits, never inside it. The DB is the source of truth.
 
@@ -234,19 +234,19 @@ Events are published **after** the transaction commits, never inside it. The DB 
 
 Flight search results are cached for 4 hours. The cache key is a stable JSON serialisation of the query parameters with keys sorted alphabetically, so `?trips=X&tripDate=Y` and `?tripDate=Y&trips=X` hit the same key.
 
-The flight detail page (used at booking time) always hits the DB directly â€” seat counts must be live.
+The flight detail page (used at booking time) always hits the DB directly — seat counts must be live.
 
 Both the cache read and write are wrapped in independent try/catch blocks. Redis failure degrades to direct DB queries, never a 500 error.
 
 ### API Gateway Trust Model
 
-The API Gateway decodes the JWT and injects `x-user-id` and `x-user-email` headers before proxying. Downstream services read the user identity from these headers â€” never from the request body. This prevents clients from fabricating a userId to access another user's bookings.
+The API Gateway decodes the JWT and injects `x-user-id` and `x-user-email` headers before proxying. Downstream services read the user identity from these headers — never from the request body. This prevents clients from fabricating a userId to access another user's bookings.
 
 On logout, the token is added to a Redis blacklist (`blacklist:<token>`). Every authenticated request checks this key before verifying the JWT signature.
 
 ### Multi-Cabin Schema (v2)
 
-Flights have a separate `FlightClasses` table with one row per cabin (`economy`, `premium-economy`, `business`, `first-class`), each with its own `price` and `totalSeats`. Seat deductions and restorations target the specific cabin row. Flight creation with multiple cabins is atomic â€” if the `FlightClass` bulk insert fails, the parent `Flight` row is rolled back.
+Flights have a separate `FlightClasses` table with one row per cabin (`economy`, `premium-economy`, `business`, `first-class`), each with its own `price` and `totalSeats`. Seat deductions and restorations target the specific cabin row. Flight creation with multiple cabins is atomic — if the `FlightClass` bulk insert fails, the parent `Flight` row is rolled back.
 
 ---
 
@@ -255,34 +255,34 @@ Flights have a separate `FlightClasses` table with one row per cabin (`economy`,
 Features that are natural extensions to this system but not currently implemented:
 
 **Booking experience**
-- **Seat map selection** â€” individual seat assignment per passenger (requires a `Seats` table with row/column/status per flight, and a seat-hold mechanism similar to the current booking INITIATED state)
-- **Round-trip booking** â€” link two one-way bookings into a single itinerary; calculate combined price and allow cancelling both legs together
-- **Multi-city / stopover booking** â€” chain more than two flights into one reservation
-- **Passenger details** â€” collect and store name, passport/ID, date of birth per traveller rather than just a seat count
-- **PNR / boarding pass generation** â€” generate a unique PNR number and a PDF boarding pass on booking confirmation
+- **Seat map selection** — individual seat assignment per passenger (requires a `Seats` table with row/column/status per flight, and a seat-hold mechanism similar to the current booking INITIATED state)
+- **Round-trip booking** — link two one-way bookings into a single itinerary; calculate combined price and allow cancelling both legs together
+- **Multi-city / stopover booking** — chain more than two flights into one reservation
+- **Passenger details** — collect and store name, passport/ID, date of birth per traveller rather than just a seat count
+- **PNR / boarding pass generation** — generate a unique PNR number and a PDF boarding pass on booking confirmation
 
 **Payment**
-- **Real payment gateway** â€” replace the simulated payment with Stripe or Razorpay; handle webhooks for async payment confirmation
-- **Refund processing** â€” issue refunds on cancellation rather than only restoring seats; track refund status
+- **Real payment gateway** — replace the simulated payment with Stripe or Razorpay; handle webhooks for async payment confirmation
+- **Refund processing** — issue refunds on cancellation rather than only restoring seats; track refund status
 
 **Inventory & scheduling**
-- **Waitlisting** â€” queue users when a cabin is full; auto-confirm when a seat becomes available
-- **Flight status** â€” track delays, gate changes, and cancellations; push notifications to affected passengers
-- **Fare classes within a cabin** â€” multiple price tiers (saver, flexible, fully refundable) within the same cabin class
+- **Waitlisting** — queue users when a cabin is full; auto-confirm when a seat becomes available
+- **Flight status** — track delays, gate changes, and cancellations; push notifications to affected passengers
+- **Fare classes within a cabin** — multiple price tiers (saver, flexible, fully refundable) within the same cabin class
 
 **User features**
-- **Frequent flyer / loyalty points** â€” accrue and redeem miles per booking
-- **Saved travellers** â€” store passenger profiles for faster repeat booking
-- **Price alerts** â€” notify users when a watched route drops below a target price
-- **Check-in flow** â€” online check-in window (e.g. 24 hours before departure), seat confirmation, digital boarding card
+- **Frequent flyer / loyalty points** — accrue and redeem miles per booking
+- **Saved travellers** — store passenger profiles for faster repeat booking
+- **Price alerts** — notify users when a watched route drops below a target price
+- **Check-in flow** — online check-in window (e.g. 24 hours before departure), seat confirmation, digital boarding card
 
 **Admin**
-- **Admin UI** â€” a dashboard for creating flights, viewing bookings, and managing inventory (currently flight creation is API-only)
-- **Analytics** â€” load factor per flight, revenue per route, cancellation rate
+- **Admin UI** — a dashboard for creating flights, viewing bookings, and managing inventory (currently flight creation is API-only)
+- **Analytics** — load factor per flight, revenue per route, cancellation rate
 
 **Auth**
-- **Social login** â€” OAuth with Google or GitHub (currently email/password only)
-- **Email verification** â€” confirm email address on registration before allowing bookings
+- **Social login** — OAuth with Google or GitHub (currently email/password only)
+- **Email verification** — confirm email address on registration before allowing bookings
 
 ---
 
@@ -298,21 +298,21 @@ The `k6` project was used to benchmark the performance of the Flights Service un
 
 ### Thought Process
 
-1. **Stage 1 â€” No indexes, no cache (worst-case baseline):**
+1. **Stage 1 — No indexes, no cache (worst-case baseline):**
    - Dropped all foreign key constraints and composite indexes.
    - Flushed Redis to ensure no cached results.
    - Measured raw database performance under worst-case conditions.
 
-2. **Stage 2 â€” All indexes, no cache:**
+2. **Stage 2 — All indexes, no cache:**
    - Recreated all necessary indexes and foreign key constraints.
    - Flushed Redis to ensure no cached results.
    - Measured the impact of indexing on database query performance.
 
-3. **Stage 3 â€” Indexes + cache ceiling:**
+3. **Stage 3 — Indexes + cache ceiling:**
    - Kept indexes in place.
    - Measured the best-case performance with a single cache key (pure cache-hit scenario).
 
-4. **Stage 4 â€” Indexes + cache (realistic Pareto 80/20):**
+4. **Stage 4 — Indexes + cache (realistic Pareto 80/20):**
    - Flushed Redis to start with a cold cache.
    - Simulated realistic traffic: 80% of requests targeting popular routes (cache hits) and 20% targeting random routes (cache misses).
 
