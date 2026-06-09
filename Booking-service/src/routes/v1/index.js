@@ -14,7 +14,13 @@ const bookingRoutes = require('./booking');
 const router = express.Router()
 
 
-
+router.use('/health', (req, res) => {
+    res.json({
+        'service': 'Air Orbit Booking Service',
+        'statusCode': 200,
+        'health': 'Good'
+    })
+})
 
 router.use('/booking', bookingRoutes);
 

@@ -14,6 +14,14 @@ const airportRoutes = require('./airport-routes.js')
 const flightRoutes = require('./flight-routes.js')
 const router = express.Router();
 
+router.use('/health', (req, res) => {
+    res.json({
+        'service': 'Air Orbit Flight Service',
+        'statusCode': 200,
+        'health': 'Good'
+    })
+})
+
 router.use('/airplanes', airplaneRoutes);
 router.use('/cities', cityRoutes);
 router.use('/airports', airportRoutes);

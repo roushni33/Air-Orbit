@@ -7,6 +7,14 @@ const { FLIGHTS_SERVICE, BOOKING_SERVICE } = require('../../config/server-config
 
 const router = Router();
 
+router.use('/health', (req, res) => {
+    res.json({
+        'service': 'Air Orbit API Gateway',
+        'statusCode': 200,
+        'health': 'Good'
+    })
+})
+
 router.use('/auth', authRouter);
 
 // Express strips the mounted prefix from req.url before the proxy sees it.
