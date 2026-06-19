@@ -5,7 +5,7 @@ Air Orbit is primarily an advanced airline booking system built as a full-stack 
 The repo includes an API gateway, flights service, booking service, notifications service, database/cache/queue infrastructure, and the Air Orbit frontend demo.
 ## Architecture
 
-<img width="1536" height="1024" alt="design_diagram_orbit" src="https://github.com/user-attachments/assets/6d01cfa6-c14d-460c-a059-ddaff6957bac" />
+<img width="1400" height="950" alt="design_diagram_orbit" src="./architecture-diagram.svg" />
 
 ## Run Locally
 
@@ -30,7 +30,7 @@ Then open:
 
 - Frontend: `http://localhost:5173`
 
-The first startup can take a little while because MySQL initializes and the flights seed runs once.
+The first startup can take a little while because PostgreSQL initializes and the flights seed runs once.
 
 ### Windows Docker Desktop / WSL troubleshooting
 
@@ -76,7 +76,7 @@ docker compose down -v
 - API Gateway on `5000`
 - Flights Service on `3000`
 - Booking Service on `4000`
-- MySQL on `3307`
+- PostgreSQL on `5432`
 - Redis on `6380`
 - RabbitMQ on `5672`
 - RabbitMQ Management UI on `15672`
@@ -85,14 +85,14 @@ docker compose down -v
 
 All databases and queues run locally in Docker containers.
 
-- MySQL host for local tools: `127.0.0.1`
-- MySQL port: `3307`
-- MySQL user: `root`
-- MySQL password: value from `.env.docker`
+- PostgreSQL host for local tools: `127.0.0.1`
+- PostgreSQL port: `5432`
+- PostgreSQL user: `postgres`
+- PostgreSQL password: value from `.env.docker`
 - RabbitMQ UI: `http://localhost:15672`
 - RabbitMQ default login: `guest` / `guest`
 
-MySQL databases created by the stack:
+PostgreSQL databases created by the stack:
 
 - `auth_db`
 - `FLIGHTS`
@@ -155,7 +155,7 @@ check out the detailed architecture in the
 | Flights Service | 3000 | Flights, search, seat inventory |
 | Booking Service | 4000 | Booking lifecycle, payment flow, booking expiry |
 | Notifications Service | - | Queue consumer for confirmation emails |
-| MySQL | 3307 | Persistent storage |
+| PostgreSQL | 5432 | Persistent storage |
 | Redis | 6380 | Caching, token blacklist, idempotency |
 | RabbitMQ | 5672 | Async events |
 | RabbitMQ UI | 15672 | Queue inspection |
@@ -175,7 +175,7 @@ check out the detailed architecture in the
 
 - Node.js microservices
 - API Gateway as the single public backend entry point
-- MySQL with Sequelize migrations
+- PostgreSQL with Drizzle ORM
 - Redis for caching, JWT blacklist, and payment idempotency
 - RabbitMQ for seat restoration and booking confirmation events
 - Docker Compose for one-command local setup
@@ -207,7 +207,7 @@ All frontend API traffic goes through the API gateway on `http://localhost:5000/
 
 ### ACID Transactions & Double-Booking Prevention
 
-Every seat-count mutation runs inside a Sequelize unmanaged transaction with a `SELECT ... FOR UPDATE` row lock on the `FlightClasses` row. This serialises concurrent booking requests for the same cabin: the second request blocks at the lock until the first commits, then reads the updated count. If the locked row now has insufficient seats, it gets a 400, not a negative seat count.
+Every seat-count mutation runs inside a PostgreSQL transaction with a `SELECT ... FOR UPDATE` row lock on the `flight_classes` row. This serialises concurrent booking requests for the same cabin: the second request blocks at the lock until the first commits, then reads the updated count. If the locked row now has insufficient seats, it gets a 400, not a negative seat count.
 
 The booking creation itself is a cross-service transaction — the booking record and the HTTP seat deduction to the Flights Service must both succeed. If the PATCH fails, the transaction rolls back and no ghost booking persists.
 

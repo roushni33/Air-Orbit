@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1400" height="950" viewBox="0 0 1400 950">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#333"/>
+    </marker>
+    <marker id="arrRed" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#c0392b"/>
+    </marker>
+    <marker id="arrGreen" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#27ae60"/>
+    </marker>
+    <marker id="arrBlue" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2980b9"/>
+    </marker>
+    <marker id="arrOrange" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#e67e22"/>
+    </marker>
+  </defs>
+
+  <!-- White background -->
+  <rect width="1400" height="950" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="700" y="32" text-anchor="middle" font-family="Helvetica, Arial" font-size="20" font-weight="bold" fill="#1a1a2e">Air-Orbit Microservices Architecture</text>
+
+  <!-- ═══════ DOCKER COMPOSE ENVIRONMENT boundary ═══════ -->
+  <rect x="155" y="50" width="920" height="700" rx="8" fill="none" stroke="#2980b9" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="615" y="68" text-anchor="middle" font-family="Helvetica, Arial" font-size="11" font-weight="bold" fill="#2980b9">DOCKER COMPOSE ENVIRONMENT</text>
+
+  <!-- BACKEND SERVICES box -->
+  <rect x="170" y="80" width="890" height="390" rx="6" fill="#f0f7ff" stroke="#85c1e9" stroke-width="1.2"/>
+  <text x="615" y="97" text-anchor="middle" font-family="Helvetica, Arial" font-size="11" font-weight="bold" fill="#2471a3">BACKEND SERVICES (Node.js)</text>
+
+
+  <!-- ═══════ CLIENT LAYER (left side) ═══════ -->
+  <rect x="15" y="55" width="125" height="30" rx="4" fill="#fdebd0" stroke="#e67e22" stroke-width="1.2"/>
+  <text x="77" y="74" text-anchor="middle" font-family="Helvetica, Arial" font-size="10" font-weight="bold" fill="#e67e22">CLIENT LAYER</text>
+
+  <!-- User Browser box -->
+  <rect x="20" y="110" width="120" height="80" rx="6" fill="#eaf2f8" stroke="#2980b9" stroke-width="1.2"/>
+  <!-- Globe icon -->
+  <circle cx="80" cy="130" r="10" fill="none" stroke="#2980b9" stroke-width="1.2"/>
+  <line x1="70" y1="130" x2="90" y2="130" stroke="#2980b9" stroke-width="0.8"/>
+  <line x1="80" y1="120" x2="80" y2="140" stroke="#2980b9" stroke-width="0.8"/>
+  <text x="80" y="153" text-anchor="middle" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#1a1a2e">User Browser</text>
+  <text x="80" y="165" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" fill="#555">React SPA</text>
+  <text x="80" y="176" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" fill="#555">(served via nginx)</text>
+  <text x="80" y="188" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#2980b9">Port 5173</text>
+
+
+  <!-- Arrow: Browser → API Gateway -->
+  <line x1="140" y1="145" x2="195" y2="145" stroke="#333" stroke-width="1.3" marker-end="url(#arr)"/>
+  <text x="155" y="138" font-family="Helvetica, Arial" font-size="7.5" fill="#333">All requests</text>
+  <text x="155" y="155" font-family="Helvetica, Arial" font-size="7.5" fill="#333">HTTP(S)</text>
+
+  <!-- ═══════ API GATEWAY ═══════ -->
+  <rect x="200" y="108" width="195" height="240" rx="6" fill="#ffffff" stroke="#f39c12" stroke-width="1.5"/>
+  <!-- Node.js icon placeholder -->
+  <circle cx="375" cy="118" r="8" fill="#68a063"/>
+  <text x="375" y="122" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#fff">JS</text>
+  <text x="297" y="125" text-anchor="middle" font-family="Helvetica, Arial" font-size="11" font-weight="bold" fill="#1a1a2e">API Gateway</text>
+  <text x="297" y="140" text-anchor="middle" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#f39c12">Port 5000</text>
+  <text x="210" y="158" font-family="Helvetica, Arial" font-size="8.5" fill="#333" font-weight="bold">Responsibilities:</text>
+  <text x="210" y="171" font-family="Helvetica, Arial" font-size="8" fill="#555">• JWT authentication</text>
+  <text x="210" y="183" font-family="Helvetica, Arial" font-size="8" fill="#555">  - Decode JWT</text>
+  <text x="210" y="195" font-family="Helvetica, Arial" font-size="8" fill="#555">  - Inject x-user-id header</text>
+  <text x="210" y="210" font-family="Helvetica, Arial" font-size="8" fill="#555">• Redis token blacklist</text>
+  <text x="210" y="222" font-family="Helvetica, Arial" font-size="8" fill="#555">  (logout invalidation)</text>
+  <text x="210" y="237" font-family="Helvetica, Arial" font-size="8" fill="#555">• Redis rate limiter</text>
+  <text x="210" y="249" font-family="Helvetica, Arial" font-size="8" fill="#555">  (100 req/min per IP)</text>
+  <text x="210" y="268" font-family="Helvetica, Arial" font-size="8.5" fill="#333" font-weight="bold">Routing:</text>
+  <text x="210" y="281" font-family="Helvetica, Arial" font-size="8" fill="#555">/auth → handled internally</text>
+  <text x="210" y="293" font-family="Helvetica, Arial" font-size="8" fill="#555">/flights → Flights Service</text>
+  <text x="210" y="305" font-family="Helvetica, Arial" font-size="8" fill="#555">/booking → Booking Service</text>
+
+
+  <!-- Route labels between Gateway and services -->
+  <!-- /auth label -->
+  <text x="310" y="340" font-family="Helvetica, Arial" font-size="8" fill="#c0392b" font-weight="bold">/auth</text>
+  <text x="302" y="350" font-family="Helvetica, Arial" font-size="7" fill="#888">(internal)</text>
+
+  <!-- /flights arrow to Flights Service -->
+  <line x1="395" y1="200" x2="430" y2="200" stroke="#27ae60" stroke-width="1.2" marker-end="url(#arrGreen)"/>
+  <text x="398" y="192" font-family="Helvetica, Arial" font-size="7.5" fill="#27ae60" font-weight="bold">/flights</text>
+  <text x="398" y="210" font-family="Helvetica, Arial" font-size="7" fill="#888">(with x-user-id)</text>
+
+  <!-- /booking arrow to Booking Service -->
+  <line x1="395" y1="270" x2="430" y2="270" stroke="#c0392b" stroke-width="1.2" marker-end="url(#arrRed)"/>
+  <text x="398" y="262" font-family="Helvetica, Arial" font-size="7.5" fill="#c0392b" font-weight="bold">/booking</text>
+  <text x="398" y="280" font-family="Helvetica, Arial" font-size="7" fill="#888">(with x-user-id)</text>
+
+  <!-- ═══════ FLIGHTS SERVICE ═══════ -->
+  <rect x="435" y="108" width="215" height="215" rx="6" fill="#ffffff" stroke="#27ae60" stroke-width="1.5"/>
+  <circle cx="630" cy="118" r="8" fill="#68a063"/>
+  <text x="630" y="122" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#fff">JS</text>
+  <text x="542" y="125" text-anchor="middle" font-family="Helvetica, Arial" font-size="11" font-weight="bold" fill="#1a1a2e">Flights Service</text>
+  <text x="542" y="140" text-anchor="middle" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#27ae60">Port 3000</text>
+  <text x="445" y="158" font-family="Helvetica, Arial" font-size="8" fill="#555">• Search flights</text>
+  <text x="445" y="171" font-family="Helvetica, Arial" font-size="8" fill="#555">• 4-hour search result caching</text>
+  <text x="445" y="183" font-family="Helvetica, Arial" font-size="8" fill="#555">  (Redis)</text>
+  <text x="445" y="198" font-family="Helvetica, Arial" font-size="8" fill="#555">• Consume seat.restoration</text>
+  <text x="445" y="210" font-family="Helvetica, Arial" font-size="8" fill="#555">  queue</text>
+  <text x="445" y="225" font-family="Helvetica, Arial" font-size="8" fill="#555">• Restore cabin seat counts</text>
+  <text x="445" y="237" font-family="Helvetica, Arial" font-size="8" fill="#555">  on expiry/cancellation</text>
+  <text x="445" y="255" font-family="Helvetica, Arial" font-size="8" fill="#555">• Cities, Airports, Airplanes</text>
+  <text x="445" y="267" font-family="Helvetica, Arial" font-size="8" fill="#555">• Seats, Flight Classes</text>
+  <text x="445" y="279" font-family="Helvetica, Arial" font-size="8" fill="#555">• Flight Stops (multi-stop)</text>
+
+
+  <!-- ═══════ BOOKING SERVICE ═══════ -->
+  <rect x="660" y="108" width="215" height="270" rx="6" fill="#ffffff" stroke="#2980b9" stroke-width="1.5"/>
+  <circle cx="855" cy="118" r="8" fill="#68a063"/>
+  <text x="855" y="122" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#fff">JS</text>
+  <text x="767" y="125" text-anchor="middle" font-family="Helvetica, Arial" font-size="11" font-weight="bold" fill="#1a1a2e">Booking Service</text>
+  <text x="767" y="140" text-anchor="middle" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#2980b9">Port 4000</text>
+  <text x="670" y="158" font-family="Helvetica, Arial" font-size="8" fill="#555">• Create bookings</text>
+  <text x="670" y="171" font-family="Helvetica, Arial" font-size="8" fill="#555">• Idempotency key storage</text>
+  <text x="670" y="183" font-family="Helvetica, Arial" font-size="8" fill="#555">  in Redis (24hr TTL)</text>
+  <text x="670" y="198" font-family="Helvetica, Arial" font-size="8" fill="#555">• Calls Flights Service to</text>
+  <text x="670" y="210" font-family="Helvetica, Arial" font-size="8" fill="#555">  deduct seats</text>
+  <text x="670" y="225" font-family="Helvetica, Arial" font-size="8" fill="#555">• Publish messages to RabbitMQ</text>
+  <text x="670" y="237" font-family="Helvetica, Arial" font-size="8" fill="#555">  - seat.restoration (on</text>
+  <text x="670" y="249" font-family="Helvetica, Arial" font-size="8" fill="#555">    cancellation/expiry)</text>
+  <text x="670" y="261" font-family="Helvetica, Arial" font-size="8" fill="#555">  - booking.confirmed (on</text>
+  <text x="670" y="273" font-family="Helvetica, Arial" font-size="8" fill="#555">    payment success)</text>
+  <text x="670" y="290" font-family="Helvetica, Arial" font-size="8" fill="#555">• Cron job every 5 minutes</text>
+  <text x="670" y="302" font-family="Helvetica, Arial" font-size="8" fill="#555">  to cancel expired</text>
+  <text x="670" y="314" font-family="Helvetica, Arial" font-size="8" fill="#555">  INITIATED bookings</text>
+
+  <!-- HTTP arrow: Booking → Flights (Deduct Seats) -->
+  <line x1="660" y1="200" x2="652" y2="200" stroke="#333" stroke-width="1.2" marker-end="url(#arr)"/>
+  <text x="652" y="192" font-family="Helvetica, Arial" font-size="7" fill="#333">HTTP</text>
+  <text x="652" y="210" font-family="Helvetica, Arial" font-size="7" fill="#888">(Deduct Seats)</text>
+
+
+  <!-- ═══════ NOTIFICATIONS SERVICE ═══════ -->
+  <rect x="885" y="108" width="165" height="195" rx="6" fill="#ffffff" stroke="#8e44ad" stroke-width="1.5"/>
+  <circle cx="1030" cy="118" r="8" fill="#68a063"/>
+  <text x="1030" y="122" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#fff">JS</text>
+  <text x="967" y="125" text-anchor="middle" font-family="Helvetica, Arial" font-size="10" font-weight="bold" fill="#1a1a2e">Notifications</text>
+  <text x="967" y="138" text-anchor="middle" font-family="Helvetica, Arial" font-size="10" font-weight="bold" fill="#1a1a2e">Service</text>
+  <text x="967" y="153" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" fill="#8e44ad">(Worker)</text>
+  <text x="967" y="166" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#c0392b">No HTTP Port</text>
+  <text x="895" y="183" font-family="Helvetica, Arial" font-size="8" fill="#555">• Consume</text>
+  <text x="895" y="195" font-family="Helvetica, Arial" font-size="8" fill="#555">  booking.confirmed</text>
+  <text x="895" y="207" font-family="Helvetica, Arial" font-size="8" fill="#555">  queue</text>
+  <text x="895" y="222" font-family="Helvetica, Arial" font-size="8" fill="#555">• Call Resend API to</text>
+  <text x="895" y="234" font-family="Helvetica, Arial" font-size="8" fill="#555">  send confirmation</text>
+  <text x="895" y="246" font-family="Helvetica, Arial" font-size="8" fill="#555">  emails</text>
+
+  <!-- ═══════ EXTERNAL SERVICE: Resend ═══════ -->
+  <text x="1130" y="68" text-anchor="middle" font-family="Helvetica, Arial" font-size="10" font-weight="bold" fill="#555">EXTERNAL SERVICE</text>
+  <rect x="1095" y="130" width="130" height="70" rx="6" fill="#fdf2f8" stroke="#c0392b" stroke-width="1.3"/>
+  <text x="1160" y="155" text-anchor="middle" font-family="Helvetica, Arial" font-size="10" font-weight="bold" fill="#c0392b">Resend API</text>
+  <text x="1160" y="170" text-anchor="middle" font-family="Helvetica, Arial" font-size="8.5" fill="#555">(Email Service)</text>
+  <text x="1160" y="185" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" fill="#888">Transactional emails</text>
+
+  <!-- Arrow: Notifications → Resend -->
+  <line x1="1050" y1="165" x2="1093" y2="165" stroke="#c0392b" stroke-width="1.2" marker-end="url(#arrRed)"/>
+  <text x="1058" y="158" font-family="Helvetica, Arial" font-size="7.5" fill="#c0392b">HTTPS</text>
+
+
+  <!-- ═══════ RABBITMQ QUEUE CONNECTIONS ═══════ -->
+
+  <!-- Consume seat.restoration: RabbitMQ → Flights -->
+  <text x="460" y="345" font-family="Helvetica, Arial" font-size="7.5" fill="#8e44ad">Consume</text>
+  <text x="460" y="356" font-family="Helvetica, Arial" font-size="7.5" fill="#8e44ad">seat.restoration</text>
+  <text x="460" y="367" font-family="Helvetica, Arial" font-size="7" fill="#888">(queue)</text>
+  <path d="M 542 325 L 542 395 L 480 430" fill="none" stroke="#8e44ad" stroke-width="1.2" stroke-dasharray="5,3"/>
+
+  <!-- Read/Write label between Flights and DB -->
+  <text x="445" y="400" font-family="Helvetica, Arial" font-size="7" fill="#2980b9">Read/Write</text>
+  <text x="445" y="410" font-family="Helvetica, Arial" font-size="7" fill="#2980b9">SELECT FOR UPDATE</text>
+  <text x="445" y="420" font-family="Helvetica, Arial" font-size="7" fill="#2980b9">for seat deduction /</text>
+  <text x="445" y="430" font-family="Helvetica, Arial" font-size="7" fill="#2980b9">restore</text>
+
+  <!-- Read/Write label between Booking and DB -->
+  <text x="680" y="400" font-family="Helvetica, Arial" font-size="7" fill="#2980b9">Read/Write</text>
+  <text x="680" y="410" font-family="Helvetica, Arial" font-size="7" fill="#2980b9">(Transactions)</text>
+  <text x="680" y="420" font-family="Helvetica, Arial" font-size="7" fill="#2980b9">bookings_db</text>
+
+  <!-- Publish arrows from Booking to RabbitMQ -->
+  <text x="710" y="395" font-family="Helvetica, Arial" font-size="7.5" fill="#8e44ad">Publish</text>
+  <text x="700" y="406" font-family="Helvetica, Arial" font-size="7.5" fill="#8e44ad">seat.restoration</text>
+  <path d="M 730 380 L 730 440 L 620 470" fill="none" stroke="#8e44ad" stroke-width="1.2" stroke-dasharray="5,3"/>
+
+  <text x="800" y="395" font-family="Helvetica, Arial" font-size="7.5" fill="#8e44ad">Publish</text>
+  <text x="790" y="406" font-family="Helvetica, Arial" font-size="7.5" fill="#8e44ad">booking.confirmed</text>
+  <path d="M 820 380 L 820 440 L 750 470" fill="none" stroke="#8e44ad" stroke-width="1.2" stroke-dasharray="5,3"/>
+
+  <!-- Consume booking.confirmed: RabbitMQ → Notifications -->
+  <text x="900" y="395" font-family="Helvetica, Arial" font-size="7.5" fill="#8e44ad">Consume</text>
+  <text x="895" y="406" font-family="Helvetica, Arial" font-size="7.5" fill="#8e44ad">booking.confirmed</text>
+  <text x="910" y="417" font-family="Helvetica, Arial" font-size="7" fill="#888">(queue)</text>
+  <path d="M 967 303 L 967 440 L 850 470" fill="none" stroke="#8e44ad" stroke-width="1.2" stroke-dasharray="5,3"/>
+
+
+  <!-- ═══════ INFRASTRUCTURE LAYER ═══════ -->
+  <rect x="155" y="480" width="920" height="270" rx="8" fill="none" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="230" y="498" font-family="Helvetica, Arial" font-size="11" font-weight="bold" fill="#e67e22">INFRASTRUCTURE</text>
+
+  <!-- ═══ Redis ═══ -->
+  <rect x="175" y="510" width="220" height="225" rx="6" fill="#fff5f5" stroke="#e74c3c" stroke-width="1.3"/>
+  <!-- Redis icon -->
+  <rect x="195" y="520" width="30" height="20" rx="3" fill="#e74c3c"/>
+  <text x="210" y="534" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" fill="#fff" font-weight="bold">Redis</text>
+  <text x="285" y="530" text-anchor="middle" font-family="Helvetica, Arial" font-size="11" font-weight="bold" fill="#c0392b">Redis</text>
+  <text x="285" y="545" text-anchor="middle" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#e74c3c">Port 6379</text>
+  <text x="185" y="565" font-family="Helvetica, Arial" font-size="8.5" fill="#333" font-weight="bold">Shared by:</text>
+  <text x="185" y="580" font-family="Helvetica, Arial" font-size="8" fill="#555">• API Gateway</text>
+  <text x="185" y="593" font-family="Helvetica, Arial" font-size="8" fill="#555">  - Token blacklist</text>
+  <text x="185" y="606" font-family="Helvetica, Arial" font-size="8" fill="#555">  - Rate limiter (100 req/min per IP)</text>
+  <text x="185" y="622" font-family="Helvetica, Arial" font-size="8" fill="#555">• Flights Service</text>
+  <text x="185" y="635" font-family="Helvetica, Arial" font-size="8" fill="#555">  - Search result cache (4hr TTL)</text>
+  <text x="185" y="651" font-family="Helvetica, Arial" font-size="8" fill="#555">• Booking Service</text>
+  <text x="185" y="664" font-family="Helvetica, Arial" font-size="8" fill="#555">  - Idempotency keys (24hr TTL)</text>
+
+  <!-- Gateway → Redis -->
+  <line x1="297" y1="348" x2="285" y2="508" stroke="#e74c3c" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="240" y="375" font-family="Helvetica, Arial" font-size="7" fill="#e74c3c">Token blacklist</text>
+  <text x="260" y="386" font-family="Helvetica, Arial" font-size="7" fill="#e74c3c">Rate limiter</text>
+  <text x="232" y="397" font-family="Helvetica, Arial" font-size="7" fill="#888">(100 req/min/IP)</text>
+
+
+  <!-- ═══ PostgreSQL ═══ -->
+  <rect x="420" y="510" width="320" height="225" rx="6" fill="#eaf6ff" stroke="#336791" stroke-width="1.3"/>
+  <!-- PostgreSQL icon -->
+  <rect x="440" y="520" width="40" height="20" rx="3" fill="#336791"/>
+  <text x="460" y="534" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#fff" font-weight="bold">PgSQL</text>
+  <text x="580" y="530" text-anchor="middle" font-family="Helvetica, Arial" font-size="11" font-weight="bold" fill="#336791">PostgreSQL</text>
+  <text x="580" y="545" text-anchor="middle" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#336791">Port 5432</text>
+  <text x="580" y="560" text-anchor="middle" font-family="Helvetica, Arial" font-size="8.5" fill="#555">Single PostgreSQL Instance</text>
+  <text x="580" y="573" text-anchor="middle" font-family="Helvetica, Arial" font-size="8.5" fill="#555">(Three Logical Databases)</text>
+
+  <!-- DB cylinders -->
+  <!-- auth_db -->
+  <ellipse cx="470" cy="600" rx="30" ry="8" fill="#d6eaf8" stroke="#336791" stroke-width="1"/>
+  <rect x="440" y="600" width="60" height="30" fill="#d6eaf8" stroke-width="0"/>
+  <line x1="440" y1="600" x2="440" y2="630" stroke="#336791" stroke-width="1"/>
+  <line x1="500" y1="600" x2="500" y2="630" stroke="#336791" stroke-width="1"/>
+  <ellipse cx="470" cy="630" rx="30" ry="8" fill="#d6eaf8" stroke="#336791" stroke-width="1"/>
+  <text x="470" y="618" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#336791">auth_db</text>
+  <text x="470" y="655" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#888">(API Gateway</text>
+  <text x="470" y="665" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#888">data)</text>
+
+  <!-- FLIGHTS -->
+  <ellipse cx="580" cy="600" rx="30" ry="8" fill="#d6eaf8" stroke="#336791" stroke-width="1"/>
+  <rect x="550" y="600" width="60" height="30" fill="#d6eaf8" stroke-width="0"/>
+  <line x1="550" y1="600" x2="550" y2="630" stroke="#336791" stroke-width="1"/>
+  <line x1="610" y1="600" x2="610" y2="630" stroke="#336791" stroke-width="1"/>
+  <ellipse cx="580" cy="630" rx="30" ry="8" fill="#d6eaf8" stroke="#336791" stroke-width="1"/>
+  <text x="580" y="618" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#336791">FLIGHTS</text>
+  <text x="580" y="655" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#888">(Flight, Airport,</text>
+  <text x="580" y="665" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#888">Cabin, Seats)</text>
+
+  <!-- bookings_db -->
+  <ellipse cx="690" cy="600" rx="30" ry="8" fill="#d6eaf8" stroke="#336791" stroke-width="1"/>
+  <rect x="660" y="600" width="60" height="30" fill="#d6eaf8" stroke-width="0"/>
+  <line x1="660" y1="600" x2="660" y2="630" stroke="#336791" stroke-width="1"/>
+  <line x1="720" y1="600" x2="720" y2="630" stroke="#336791" stroke-width="1"/>
+  <ellipse cx="690" cy="630" rx="30" ry="8" fill="#d6eaf8" stroke="#336791" stroke-width="1"/>
+  <text x="690" y="615" text-anchor="middle" font-family="Helvetica, Arial" font-size="7.5" font-weight="bold" fill="#336791">bookings_db</text>
+  <text x="690" y="655" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#888">(Bookings, Payments,</text>
+  <text x="690" y="665" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#888">Users, etc.)</text>
+
+  <!-- ORM label -->
+  <text x="580" y="710" text-anchor="middle" font-family="Helvetica, Arial" font-size="8.5" fill="#336791" font-weight="bold">ORM: Drizzle</text>
+
+
+  <!-- ═══ RabbitMQ ═══ -->
+  <rect x="765" y="510" width="295" height="225" rx="6" fill="#fdf3e7" stroke="#e67e22" stroke-width="1.3"/>
+  <!-- RabbitMQ icon -->
+  <rect x="785" y="520" width="50" height="20" rx="3" fill="#ff6600"/>
+  <text x="810" y="534" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#fff" font-weight="bold">RabbitMQ</text>
+  <text x="912" y="530" text-anchor="middle" font-family="Helvetica, Arial" font-size="11" font-weight="bold" fill="#e67e22">RabbitMQ</text>
+  <text x="912" y="545" text-anchor="middle" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#e67e22">Port 5672</text>
+  <text x="912" y="560" text-anchor="middle" font-family="Helvetica, Arial" font-size="8.5" fill="#555">Durable Queues</text>
+
+  <!-- seat.restoration queue box -->
+  <rect x="790" y="580" width="120" height="55" rx="4" fill="#fff" stroke="#e67e22" stroke-width="1"/>
+  <text x="850" y="600" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#e67e22">seat.restoration</text>
+  <text x="850" y="614" text-anchor="middle" font-family="Helvetica, Arial" font-size="7.5" fill="#555">(queue)</text>
+  <text x="850" y="628" text-anchor="middle" font-family="Helvetica, Arial" font-size="7.5" fill="#888">Durable</text>
+
+  <!-- booking.confirmed queue box -->
+  <rect x="925" y="580" width="120" height="55" rx="4" fill="#fff" stroke="#e67e22" stroke-width="1"/>
+  <text x="985" y="600" text-anchor="middle" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#e67e22">booking.confirmed</text>
+  <text x="985" y="614" text-anchor="middle" font-family="Helvetica, Arial" font-size="7.5" fill="#555">(queue)</text>
+  <text x="985" y="628" text-anchor="middle" font-family="Helvetica, Arial" font-size="7.5" fill="#888">Durable</text>
+
+  <!-- DB connections from services down -->
+  <line x1="542" y1="325" x2="542" y2="508" stroke="#336791" stroke-width="1.1" stroke-dasharray="4,3"/>
+  <line x1="767" y1="380" x2="650" y2="508" stroke="#336791" stroke-width="1.1" stroke-dasharray="4,3"/>
+  <line x1="297" y1="348" x2="470" y2="508" stroke="#336791" stroke-width="0.9" stroke-dasharray="4,3"/>
+
+
+  <!-- ═══════ KEY DATA FLOWS (left panel) ═══════ -->
+  <rect x="15" y="230" width="125" height="210" rx="4" fill="#f9f9f9" stroke="#ddd" stroke-width="1"/>
+  <text x="77" y="248" text-anchor="middle" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#333">KEY DATA FLOWS</text>
+
+  <circle cx="30" cy="270" r="8" fill="#27ae60"/>
+  <text x="30" y="274" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#fff" font-weight="bold">1</text>
+  <text x="43" y="268" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#27ae60">SEARCH FLOW</text>
+  <text x="43" y="280" font-family="Helvetica, Arial" font-size="7.5" fill="#555">Search for flights</text>
+
+  <circle cx="30" cy="305" r="8" fill="#2980b9"/>
+  <text x="30" y="309" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#fff" font-weight="bold">2</text>
+  <text x="43" y="303" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#2980b9">BOOKING FLOW</text>
+  <text x="43" y="315" font-family="Helvetica, Arial" font-size="7.5" fill="#555">Create booking</text>
+
+  <circle cx="30" cy="340" r="8" fill="#8e44ad"/>
+  <text x="30" y="344" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#fff" font-weight="bold">3</text>
+  <text x="43" y="338" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#8e44ad">PAYMENT FLOW</text>
+  <text x="43" y="350" font-family="Helvetica, Arial" font-size="7.5" fill="#555">Payment success</text>
+
+  <circle cx="30" cy="375" r="8" fill="#e67e22"/>
+  <text x="30" y="379" text-anchor="middle" font-family="Helvetica, Arial" font-size="7" fill="#fff" font-weight="bold">4</text>
+  <text x="43" y="373" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#e67e22">EXPIRY FLOW</text>
+  <text x="43" y="385" font-family="Helvetica, Arial" font-size="7.5" fill="#555">Expire &amp; restore seats</text>
+
+
+  <!-- ═══════ DATA FLOWS DETAIL (right panel) ═══════ -->
+  <rect x="1095" y="220" width="290" height="690" rx="4" fill="#f9f9f9" stroke="#ddd" stroke-width="1"/>
+  <text x="1240" y="240" text-anchor="middle" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#333">DATA FLOWS (DETAIL)</text>
+
+  <!-- Search Flow -->
+  <circle cx="1110" cy="262" r="7" fill="#27ae60"/>
+  <text x="1110" y="266" text-anchor="middle" font-family="Helvetica, Arial" font-size="6.5" fill="#fff" font-weight="bold">1</text>
+  <text x="1122" y="265" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#27ae60">SEARCH FLOW</text>
+  <text x="1115" y="280" font-family="Helvetica, Arial" font-size="7" fill="#555">1. Browser → API Gateway</text>
+  <text x="1115" y="291" font-family="Helvetica, Arial" font-size="7" fill="#555">2. API Gateway → Flights Service</text>
+  <text x="1115" y="302" font-family="Helvetica, Arial" font-size="7" fill="#555">3. Flights → Redis (cache hit)</text>
+  <text x="1115" y="313" font-family="Helvetica, Arial" font-size="7" fill="#555">3a. Redis → Flights Service</text>
+  <text x="1115" y="324" font-family="Helvetica, Arial" font-size="7" fill="#555">4. Flights → API Gateway → Browser</text>
+  <text x="1115" y="338" font-family="Helvetica, Arial" font-size="7" fill="#888" font-style="italic">(Cache miss):</text>
+  <text x="1115" y="349" font-family="Helvetica, Arial" font-size="7" fill="#555">3b. Flights → PostgreSQL (FLIGHTS)</text>
+  <text x="1115" y="360" font-family="Helvetica, Arial" font-size="7" fill="#555">3c. Flights → Redis (cache update)</text>
+  <text x="1115" y="371" font-family="Helvetica, Arial" font-size="7" fill="#555">4. Flights → API Gateway → Browser</text>
+
+  <!-- Booking Flow -->
+  <circle cx="1110" cy="395" r="7" fill="#2980b9"/>
+  <text x="1110" y="399" text-anchor="middle" font-family="Helvetica, Arial" font-size="6.5" fill="#fff" font-weight="bold">2</text>
+  <text x="1122" y="398" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#2980b9">BOOKING FLOW</text>
+  <text x="1115" y="413" font-family="Helvetica, Arial" font-size="7" fill="#555">1. Browser → API Gateway (JWT)</text>
+  <text x="1115" y="424" font-family="Helvetica, Arial" font-size="7" fill="#555">2. API Gateway → Booking Service</text>
+  <text x="1115" y="435" font-family="Helvetica, Arial" font-size="7" fill="#555">3. Booking → PostgreSQL (bookings_db)</text>
+  <text x="1115" y="446" font-family="Helvetica, Arial" font-size="7" fill="#555">4. Booking → Flights Service (HTTP)</text>
+  <text x="1115" y="457" font-family="Helvetica, Arial" font-size="7" fill="#555">5. Flights → PostgreSQL (SELECT FOR UPDATE)</text>
+  <text x="1115" y="468" font-family="Helvetica, Arial" font-size="7" fill="#555">6. Flights → Booking Service</text>
+  <text x="1115" y="479" font-family="Helvetica, Arial" font-size="7" fill="#555">7. Booking → API Gateway → Browser</text>
+
+  <!-- Payment Flow -->
+  <circle cx="1110" cy="503" r="7" fill="#8e44ad"/>
+  <text x="1110" y="507" text-anchor="middle" font-family="Helvetica, Arial" font-size="6.5" fill="#fff" font-weight="bold">3</text>
+  <text x="1122" y="506" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#8e44ad">PAYMENT FLOW</text>
+  <text x="1115" y="521" font-family="Helvetica, Arial" font-size="7" fill="#555">1. Browser → API Gateway (JWT)</text>
+  <text x="1115" y="532" font-family="Helvetica, Arial" font-size="7" fill="#555">2. API Gateway → Booking Service</text>
+  <text x="1115" y="543" font-family="Helvetica, Arial" font-size="7" fill="#555">3. Booking → Redis (idempotency check)</text>
+  <text x="1115" y="554" font-family="Helvetica, Arial" font-size="7" fill="#555">4. Booking → PostgreSQL (status update)</text>
+  <text x="1115" y="565" font-family="Helvetica, Arial" font-size="7" fill="#555">5. Booking → RabbitMQ (booking.confirmed)</text>
+  <text x="1115" y="576" font-family="Helvetica, Arial" font-size="7" fill="#555">6. RabbitMQ → Notifications Service</text>
+  <text x="1115" y="587" font-family="Helvetica, Arial" font-size="7" fill="#555">7. Notifications → Resend API (email)</text>
+
+
+  <!-- Expiry Flow -->
+  <circle cx="1110" cy="611" r="7" fill="#e67e22"/>
+  <text x="1110" y="615" text-anchor="middle" font-family="Helvetica, Arial" font-size="6.5" fill="#fff" font-weight="bold">4</text>
+  <text x="1122" y="614" font-family="Helvetica, Arial" font-size="8" font-weight="bold" fill="#e67e22">EXPIRY FLOW</text>
+  <text x="1115" y="629" font-family="Helvetica, Arial" font-size="7" fill="#555">1. Booking Service Cron (every 5 min)</text>
+  <text x="1115" y="640" font-family="Helvetica, Arial" font-size="7" fill="#555">2. Booking → PostgreSQL (bulk cancel expired)</text>
+  <text x="1115" y="651" font-family="Helvetica, Arial" font-size="7" fill="#555">3. Booking → RabbitMQ (seat.restoration)</text>
+  <text x="1115" y="662" font-family="Helvetica, Arial" font-size="7" fill="#555">4. RabbitMQ → Flights Service</text>
+  <text x="1115" y="673" font-family="Helvetica, Arial" font-size="7" fill="#555">5. Flights → PostgreSQL (restore seats)</text>
+
+  <!-- ═══════ LEGEND (bottom left) ═══════ -->
+  <rect x="15" y="460" width="125" height="100" rx="4" fill="#f9f9f9" stroke="#ddd" stroke-width="1"/>
+  <text x="77" y="478" text-anchor="middle" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#333">LEGEND</text>
+
+  <line x1="25" y1="494" x2="55" y2="494" stroke="#333" stroke-width="1.3" marker-end="url(#arr)"/>
+  <text x="62" y="498" font-family="Helvetica, Arial" font-size="7.5" fill="#555">Synchronous HTTP</text>
+
+  <line x1="25" y1="512" x2="55" y2="512" stroke="#8e44ad" stroke-width="1.2" stroke-dasharray="5,3"/>
+  <text x="62" y="516" font-family="Helvetica, Arial" font-size="7.5" fill="#555">Async (Message Queue)</text>
+
+  <line x1="25" y1="530" x2="55" y2="530" stroke="#336791" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="62" y="534" font-family="Helvetica, Arial" font-size="7.5" fill="#555">Data / DB / Cache</text>
+
+  <line x1="25" y1="548" x2="55" y2="548" stroke="#888" stroke-width="0.8" stroke-dasharray="2,2"/>
+  <text x="62" y="552" font-family="Helvetica, Arial" font-size="7.5" fill="#555">Internal / Background</text>
+
+  <!-- ═══════ NOTES (bottom) ═══════ -->
+  <text x="15" y="790" font-family="Helvetica, Arial" font-size="9" font-weight="bold" fill="#333">NOTES</text>
+  <text x="15" y="805" font-family="Helvetica, Arial" font-size="7.5" fill="#555">• All RabbitMQ queues are durable and use persistent messages — survive RabbitMQ restarts.</text>
+  <text x="15" y="818" font-family="Helvetica, Arial" font-size="7.5" fill="#555">• Idempotency keys prevent duplicate booking/payment — cached 24hr in Redis. Failed payments can be retried with same key.</text>
+  <text x="15" y="831" font-family="Helvetica, Arial" font-size="7.5" fill="#555">• SELECT FOR UPDATE row lock on flight_classes prevents double-booking the same seat class concurrently.</text>
+  <text x="15" y="844" font-family="Helvetica, Arial" font-size="7.5" fill="#555">• Notifications Service has no HTTP server — stays alive purely as a RabbitMQ consumer process.</text>
+  <text x="15" y="857" font-family="Helvetica, Arial" font-size="7.5" fill="#555">• Flight search cache uses stable sorted JSON key so query param order doesn't affect cache hits (4hr TTL).</text>
+
+</svg>
